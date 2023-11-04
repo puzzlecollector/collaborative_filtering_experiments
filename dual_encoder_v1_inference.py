@@ -198,6 +198,51 @@ class custom_collate_inference(object):
         p_numericals = torch.stack(p_numericals, dim=0).squeeze(dim=1) 
         return p_input_ids, p_attn_masks, p_numericals
     
+class PairData(Dataset):
+    def __init__(self, df):
+        super(PairData, self).__init__() 
+        self.data = df
+    def __getitem__(self, index): 
+        return self.data.iloc[index] 
+    def __len__(self): 
+        return self.data.shape[0]
+    
+class custom_collate(object):
+    def __init__(self):
+        self.tokenizer = AutoTokenizer.from_pretrained("monologg/kobigbird-bert-base")
+        self.chunk_size = 512 
+    def __call__(self, batch): 
+        q_input_ids, q_attn_masks, q_numericals, q_labels = [], [], [], []
+        p_input_ids, p_attn_masks, p_numericals, p_labels = [], [], [], []  
+        ids = 0 
+        all_queries = [] 
+        for idx, row in enumerate(batch):
+            candidate, company = row[0], row[1] 
+            candidate_information = candidate_dict[candidate]
+            company_information = company_dict[company] 
+            
+            q_input_ids.append(candidate_information["input_ids"]) 
+            q_attn_masks.append(candidate_information["attn_masks"]) 
+            q_numericals.append(candidate_information["numerical_inputs"]) 
+            q_labels.append(resume_to_id[candidate])
+            
+            p_input_ids.append(company_information["input_ids"]) 
+            p_attn_masks.append(company_information["attn_masks"])
+            p_numericals.append(company_information["numerical_inputs"]) 
+            p_labels.append(resume_to_id[candidate])  
+        
+        q_input_ids = torch.stack(q_input_ids, dim=0).squeeze(dim=1) 
+        q_attn_masks = torch.stack(q_attn_masks, dim=0).squeeze(dim=1) 
+        q_numericals = torch.stack(q_numericals, dim=0).squeeze(dim=1) 
+        q_labels = torch.tensor(q_labels)
+        
+        p_input_ids = torch.stack(p_input_ids, dim=0).squeeze(dim=1) 
+        p_attn_masks = torch.stack(p_attn_masks, dim=0).squeeze(dim=1) 
+        p_numericals = torch.stack(p_numericals, dim=0).squeeze(dim=1) 
+        p_labels = torch.tensor(p_labels)
+        
+        return q_input_ids, q_attn_masks, q_numericals, q_labels, p_input_ids, p_attn_masks, p_numericals, p_labels 
+    
 # load saved checkpoints 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 candidate_encoder = CandidateEmbedder() 
@@ -214,7 +259,7 @@ company_encoder.eval() # evaluation mode
 
 collate_inference = custom_collate_inference() 
 full_set = PairData(apply_train_df) 
-full_dataloader = DataLoader(full_set, batch_size=32, collate_fn=collate_inference, shuffle=False)
+full_dataloader = DataLoader(full_set, batch_size=128, collate_fn=collate_inference, shuffle=False)
 
 # get all company embeddings 
 company_embs = [] 
@@ -273,7 +318,7 @@ for cand_id in tqdm(cand_ids):
     candidate_embedding = candidate_embedding.detach().cpu().numpy() 
     distances, indices = index.search(candidate_embedding, 1000)
     
-    correct_idx = query_index_dict[query] 
+    correct_idx = query_index_dict[cand_id] 
     counter = 0 
     for idx in indices[0]: 
         if idx not in correct_idx: 
@@ -286,7 +331,7 @@ sub_resume_seq, sub_recruitment_seq = [], []
 for key, value in applications.items(): 
     for v in value: 
         sub_resume_seq.append(key) 
-        sub_recruitment_seq.append(v) 
+        sub_recruitment_seq.append(id_to_company[v]) 
     
 print(len(sub_resume_seq), len(sub_recruitment_seq)) 
 
@@ -299,4 +344,10 @@ submission = pd.DataFrame({
 submission.to_csv("DualEncoder_v1_baseline.csv", index=False) 
 
 print("done saving!") 
-print("="*100)  
+print("="*100) 
+
+
+    
+    
+    
+
