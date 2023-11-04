@@ -268,14 +268,14 @@ device = torch.device("cuda")
 
 collate = custom_collate() 
 train_set = PairData(train)
-train_dataloader = DataLoader(train_set, batch_size=32, collate_fn=collate, shuffle=True) 
+train_dataloader = DataLoader(train_set, batch_size=64, collate_fn=collate, shuffle=True) 
 
 val_set = PairData(val) 
-val_dataloader = DataLoader(val_set, batch_size=32, collate_fn=collate, shuffle=False)
+val_dataloader = DataLoader(val_set, batch_size=64, collate_fn=collate, shuffle=False)
 
 collate_inference = custom_collate_inference() 
 full_set = PairData(apply_train_df) 
-full_dataloader = DataLoader(full_set, batch_size=32, collate_fn=collate_inference, shuffle=False)
+full_dataloader = DataLoader(full_set, batch_size=64, collate_fn=collate_inference, shuffle=False)
 
 candidate_encoder = CandidateEmbedder()
 candidate_encoder.to(device)
