@@ -376,7 +376,7 @@ for epoch in tqdm(range(0, epochs), desc="Epochs", position=0, leave=True, total
         index.add_with_ids(company_embs, np.array(range(0, len(company_embs)), dtype=int))
         index.nprobe = 64
         
-        top5 = 0 
+        top_5 = 0 
         val_seqs = val["resume_seq"].values 
         for sample_idx in tqdm(range(len(val_seqs)), position=0, leave=True): 
             query = val_seqs[sample_idx] 
@@ -409,3 +409,4 @@ for epoch in tqdm(range(0, epochs), desc="Epochs", position=0, leave=True, total
             print("saved current best checkpoint!") 
             
     print(f"Epoch: {epoch} | avg train loss: {avg_train_loss} | avg val loss: {avg_val_loss} | recall: {avg_top_5}") 
+    
